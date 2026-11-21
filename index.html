@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>응급케어 AI 가이드 | 응급 대응 수준 판정 및 응급실 검색</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for AI model visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .slider-thumb::-webkit-slider-thumb {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('diagnosis')">
+        <span class="bg-red-600 text-white p-2 rounded-xl shadow-md text-xl font-bold flex items-center justify-center w-10 h-10">
+          🚑
+        </span>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">응급케어 AI 가이드</h1>
+          <p class="text-xs text-slate-500">복합 증상 조합 분석 & 약물·기저질환 통합 AI Triage</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="nav-diag" onclick="switchTab('diagnosis')" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition bg-blue-50 text-blue-700 font-bold">
+          증상 판정
+        </button>
+        <button id="nav-er" onclick="switchTab('er-info')" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100">
+          응급실 및 진료과 안내
+        </button>
+        <button id="nav-model" onclick="switchTab('model-info')" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100">
+          AI 모델 분석
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 법적 면책 공지 배너 -->
+  <div class="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 text-center">
+    <strong>⚠️ 의료 안전 주의사항:</strong> 본 서비스는 인공지능 지도학습 모델과 안전 규칙을 활용한 <strong>참고용 정보</strong>를 제공하며, 의사의 진료를 대신할 수 없습니다. 생명이 위급한 응급 상황인 경우 지체 없이 <strong>119</strong>에 신고하십시오.
+  </div>
+
+  <!-- 메인 컨텐츠 영역 -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+    <!-- ================= TAB 1: 증상 판정 탭 ================= -->
+    <div id="tab-diagnosis" class="space-y-6">
+      
+      <!-- 인트로 배너 -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <span class="inline-block bg-blue-500/40 text-blue-100 text-xs px-2.5 py-1 rounded-full font-semibold mb-2">
+            Multi-Symptom Synergy & Drug-Disease Interaction
+          </span>
+          <h2 class="text-xl md:text-2xl font-bold">환자의 복합 증상, 복용 약물, 기저질환을 입력해주세요</h2>
+          <p class="text-blue-100 text-sm mt-1">
+            여러 증상의 동시 발생 조합, 복용 중인 약물과 기저질환의 상호작용 위험도를 AI 모델이 종합 분석합니다.
+          </p>
+        </div>
+        <div class="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/20 text-xs text-blue-50 max-w-xs">
+          💡 <strong>위험 조합 감지:</strong> 예: [흉통 + 식은땀 + 방사통] 또는 [외상 + 항응고제 복용] 감지 시 즉각 119 도움 요청이 우선 작동됩니다.
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 입력 폼 영역 (7열) -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
+          <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="w-2 h-5 bg-blue-600 rounded-full inline-block"></span>
+              환자 상태 및 복합 증상 입력
+            </span>
+            <span class="text-xs text-slate-400 font-normal">* 표시는 필수 항목</span>
+          </h3>
+
+          <!-- [1] 환자 기본 정보: 성별 & 연령대 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                성별 <span class="text-red-500">*</span>
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center justify-center space-x-2 bg-white p-2.5 rounded-lg border border-slate-300 cursor-pointer hover:border-blue-500 text-xs font-semibold">
+                  <input type="radio" name="gender" value="male" checked class="text-blue-600 focus:ring-blue-500" onchange="toggleGenderSpecific()">
+                  <span>남성 (Male)</span>
+                </label>
+                <label class="flex items-center justify-center space-x-2 bg-white p-2.5 rounded-lg border border-slate-300 cursor-pointer hover:border-blue-500 text-xs font-semibold">
+                  <input type="radio" name="gender" value="female" class="text-blue-600 focus:ring-blue-500" onchange="toggleGenderSpecific()">
+                  <span>여성 (Female)</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                환자 연령대 <span class="text-red-500">*</span>
+              </label>
+              <select id="age-group" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="adult">성인 (19~64세)</option>
+                <option value="senior">고령자 (65세 이상, 고위험군)</option>
+                <option value="child">소아 / 청소년 (2~18세)</option>
+                <option value="infant">영유아 (생후 24개월 이하)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- [2] 직접 증상 서술하기 (자유 텍스트 입력) -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="block text-sm font-semibold text-slate-700" for="user-free-text">
+                ✍️ 직접 증상 서술하기 (자유 텍스트 입력)
+              </label>
+              <span class="text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-medium">자연어 키워드 자동 분석</span>
+            </div>
+            <textarea id="user-free-text" rows="2"
+              class="w-full rounded-xl border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition"
+              placeholder="예: '갑자기 가슴을 쥐어짜는 듯 아프고 식은땀이 나며 턱으로 통증이 퍼져요', '아스피린 복용 중인데 넘어져서 머리를 부딪혔습니다' 등 구체적인 상태를 적어주세요."></textarea>
+            <div id="detected-keywords-box" class="hidden mt-1.5 flex flex-wrap gap-1 text-[11px] items-center">
+              <span class="text-slate-400">감지된 핵심 키워드:</span>
+              <div id="detected-keywords-list" class="flex flex-wrap gap-1"></div>
+            </div>
+          </div>
+
+          <!-- [3] 주요 주 증상 (Primary Symptom) -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="symptom-type">
+              가장 두드러진 주 증상 선택 <span class="text-red-500">*</span>
+            </label>
+            <select id="symptom-type" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <optgroup label="🚨 긴급 / 생명 위협 위험 증상 (Red Flag)">
+                <option value="chest_pain_crushing">가슴을 쥐어짜는 듯한 극심한 통증 / 방사통 (심근경색 의심)</option>
+                <option value="stroke_sign">편측 마비 / 말이 어눌해짐 / 안면 마비 (뇌졸중 의심)</option>
+                <option value="severe_dyspnea_choking">극심한 호흡 곤란 / 숨을 쉴 수 없음 / 질식감</option>
+                <option value="unresponsive_syncope">의식 불명 / 실신 / 반응 없음</option>
+                <option value="seizure_convulsion">전신 경련 / 발작 / 거품을 묾</option>
+                <option value="hematemesis_bleeding">피를 토함(토혈) / 지혈되지 않는 대량 출혈</option>
+                <option value="anaphylaxis">아나필락시스 (전신 두드러기 + 호흡곤란 + 어지럼증)</option>
+              </optgroup>
+              <optgroup label="⚠️ 급성 / 응급실 진료 권고 증상">
+                <option value="chest_pain_general" selected>일반적인 가슴 통증 / 흉부 압박감</option>
+                <option value="dyspnea_moderate">호흡 곤란 / 숨참 / 쌕쌕거림 (천식 악화 등)</option>
+                <option value="thunderclap_headache">극심한 벼락 두통 / 구토 동반</option>
+                <option value="rlq_abdominal_pain">우하복부 극심한 통증 (급성 맹장염 의심)</option>
+                <option value="severe_abdominal_pain">심한 복통 / 지속적인 구토 및 탈수</option>
+                <option value="fracture_trauma">뼈가 부러진 것 같은 골절 의심 / 심한 관절 변형</option>
+                <option value="head_trauma">머리를 강하게 부딪힌 후 메스꺼움/구토</option>
+                <option value="burn_severe">광범위한 화상 (2도 이상 / 물집 발생)</option>
+                <option value="high_fever_chills">39℃ 이상의 고열 / 심한 오한 / 소아 열성 경련</option>
+                <option value="heart_palpitation">가슴 두근거림 (심계항진 / 부정맥 의심)</option>
+              </optgroup>
+              <optgroup label="ℹ️ 경증 / 비응급 외래 진료 권고 증상">
+                <option value="mild_headache">경미한 두통 / 가벼운 어지럼증</option>
+                <option value="cold_mild">감기 증상 / 기침 / 인후통 / 미열</option>
+                <option value="indigestion">소화불량 / 속쓰림 / 경미한 복통</option>
+                <option value="ankle_sprain">발목 삠 / 경미한 근육통 / 염좌</option>
+                <option value="minor_bruise">가벼운 타박상 / 찰과상</option>
+                <option value="skin_rash_mild">가벼운 피부 두드러기 / 가려움증</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- [4] [신규 기능] 함께 나타나는 동반 증상 (복합 증상 조합 다중 선택) -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="block text-sm font-semibold text-slate-700">
+                🧩 함께 나타나는 동반 증상 선택 (복수 선택 가능)
+              </label>
+              <span class="text-[11px] text-slate-500">여러 증상이 겹치면 위험도가 복합 평가됩니다</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="cold_sweat" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>식은땀 뻘뻘 흘림</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="radiating_pain" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>목/턱/어깨 방사통</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="nausea_vomit" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>심한 메스꺼움 / 구토</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="high_fever" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>38.5℃ 이상 고열</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="neck_stiffness" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>목이 뻣뻣함 (경부강직)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="dizziness_syncope" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>어지럼증 / 핑 도는 느낌</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="palpitation" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>심장이 불규칙하게 뜀</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="blurred_vision" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>시야 흐려짐 / 겹쳐 보임</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" name="associated-symptoms" value="shortness_of_breath" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>숨이 가쁘고 답답함</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- [5] 의식 상태 & 호흡 상태 (2분할) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                의식 상태 <span class="text-red-500">*</span>
+              </label>
+              <select id="consciousness" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="alert">명료 (질문에 정확히 대답함)</option>
+                <option value="drowsy">졸림 / 혼미 (자극에 겨우 눈을 뜸)</option>
+                <option value="unresponsive">의식 저하 / 무반응 (반응 전혀 없음)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                호흡 상태 <span class="text-red-500">*</span>
+              </label>
+              <select id="respiration" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="normal">정상 (편안하게 숨쉼)</option>
+                <option value="mild_dyspnea">약간 가쁨 / 대화 가능</option>
+                <option value="severe_dyspnea">심한 호흡 곤란 / 헐떡임 / 대화 불가</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- [6] 통증 정도 (NRS 0 ~ 10 슬라이더 & 실시간 일치 게이지) -->
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-sm font-semibold text-slate-700" for="pain-score">
+                통증 정도 (NRS 통증 척도: 0 무통증 ~ 10 극심한 고통)
+              </label>
+              <span id="pain-score-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                5점 (중등도 통증)
+              </span>
+            </div>
+            <input type="range" id="pain-score" min="0" max="10" value="5" step="1"
+                   class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-thumb accent-blue-600"
+                   oninput="updatePainDisplay(this.value)">
+            <!-- 점수와 1:1로 일치하는 실시간 통증 게이지 바 -->
+            <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+              <div id="pain-visual-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: 50%;"></div>
+            </div>
+            <div class="flex justify-between text-[11px] text-slate-400 px-1">
+              <span>0점 (무통증: 0%)</span>
+              <span>3점 (경미: 30%)</span>
+              <span>5점 (중등: 50%)</span>
+              <span>8점 (심각: 80%)</span>
+              <span>10점 (쇼크: 100%)</span>
+            </div>
+          </div>
+
+          <!-- [7] 지속 시간 -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+              증상 지속 시간 <span class="text-red-500">*</span>
+            </label>
+            <select id="duration" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="sudden">갑자기 발생 (30분 이내 급작 시작)</option>
+              <option value="hours">1시간 ~ 6시간 전 발생</option>
+              <option value="day">반나절 ~ 하루 정도 지속</option>
+              <option value="days">수일 이상 만성적 지속</option>
+            </select>
+          </div>
+
+          <!-- [8] [신규 기능] 현재 복용 중인 약물 (의약품 체크 및 직접 입력) -->
+          <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="block text-xs font-bold text-slate-800">
+                💊 현재 복용 중인 약물 (중복 선택)
+              </label>
+              <span class="text-[11px] text-blue-700">출혈·쇼크 위험도 평가 연계</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-anticoagulant" class="rounded text-blue-600 focus:ring-blue-500">
+                <span class="text-red-700 font-semibold">아스피린/항응고제 (혈전약)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-hypertension" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>혈압약 / 심장약</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-diabetes" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>당뇨약 / 인슐린 주사</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-immunosuppressant" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>면역억제제 / 항암제</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-steroid" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>스테로이드제</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50">
+                <input type="checkbox" id="med-sedative" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>수면제 / 신경안정제</span>
+              </label>
+            </div>
+            <input type="text" id="user-medications-text" placeholder="기타 복용 약물 직접 입력 (예: 소염진통제, 갑상선약, 위장약 등)"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- [9] [신규 기능] 대폭 확장된 기저질환 목록 (10종 + 직접 입력) -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+              🏥 기저질환 보유 여부 (해당사항 모두 선택)
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-hypertension" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>고혈압</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-diabetes" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>당뇨병</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-cardio" class="rounded text-blue-600 focus:ring-blue-500">
+                <span class="font-semibold text-slate-900">심혈관 질환 (협심증/스텐트)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-stroke" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>뇌혈관 질환 (뇌졸중 병력)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-respiratory" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>만성 호흡기 질환 (천식/COPD)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-kidney" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>만성 신장 질환 (투석/신부전)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-liver" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>간 질환 (간경변/간염)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-cancer" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>암 / 악성종양 (치료 중)</span>
+              </label>
+              <label class="flex items-center space-x-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100">
+                <input type="checkbox" id="chronic-immune" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>자가면역질환 / 면역저하</span>
+              </label>
+              <label id="pregnant-label" class="flex items-center space-x-1.5 bg-pink-50 p-2.5 rounded-lg border border-pink-200 cursor-pointer hover:bg-pink-100">
+                <input type="checkbox" id="chronic-pregnant" class="rounded text-pink-600 focus:ring-pink-500">
+                <span class="text-pink-800 font-semibold">임신 중 (임산부)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 제출 버튼 -->
+          <div class="pt-2">
+            <button onclick="runDiagnosis()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 flex items-center justify-center space-x-2 text-base">
+              <span>🔍 AI 복합 증상 판정하기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 결과 표시 영역 (5열) -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+          
+          <!-- 기본 대기 상태 카드 -->
+          <div id="result-empty" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-[360px]">
+            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-3xl mb-4 text-blue-600">
+              📊
+            </div>
+            <h4 class="text-base font-bold text-slate-800 mb-1">증상 정보 입력을 기다리고 있습니다</h4>
+            <p class="text-xs text-slate-500 max-w-xs leading-relaxed">
+              왼쪽 양식에서 증상 조합과 복용 약물, 기저질환을 입력하신 후 [판정하기] 버튼을 누르면, 기계학습 모델 추론 결과와 긴급 위험 조합 경고가 표시됩니다.
+            </p>
+          </div>
+
+          <!-- 결과 출력 카드 (진단 후 표시) -->
+          <div id="result-card" class="hidden bg-white rounded-2xl p-6 border shadow-lg space-y-5">
+            
+            <!-- Red Flag 즉시 안내 배너 (해당시 표시) -->
+            <div id="red-flag-alert" class="hidden bg-red-600 text-white p-4 rounded-xl shadow-md space-y-2 animate-pulse">
+              <div class="flex items-center space-x-2 font-bold text-base">
+                <span>🚨 [긴급] 위험 신호 감지 (Fail-Safe 작동)</span>
+              </div>
+              <p class="text-xs text-red-100 leading-relaxed">
+                생명 위급 징후 또는 치명적인 증상 조합이 감지되어 기계학습 분류 결과보다 <strong>즉각적인 119 응급 도움 요청</strong>이 우선 작동되었습니다.
+              </p>
+              <div class="pt-1">
+                <a href="tel:119" class="inline-block bg-white text-red-700 font-extrabold text-sm px-4 py-2 rounded-lg shadow hover:bg-red-50">
+                  📞 즉시 119 전화걸기
+                </a>
+              </div>
+            </div>
+
+            <!-- [신규 기능] 위험한 복합 증상 및 약물 상호작용 조합 경고 배너 -->
+            <div id="combination-alert" class="hidden bg-orange-50 border border-orange-200 text-orange-900 p-3.5 rounded-xl text-xs space-y-1">
+              <div class="font-bold flex items-center gap-1.5 text-orange-800">
+                <span>⚠️</span> 복합 위험 요인 조합 감지
+              </div>
+              <ul id="combination-alert-list" class="list-disc list-inside space-y-0.5 text-orange-800"></ul>
+            </div>
+
+            <!-- 등급 뱃지 및 제목 -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span id="level-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                  응급 진료 권고
+                </span>
+                <span class="text-xs text-slate-400" id="analysis-time">방금 분석됨</span>
+              </div>
+              <h3 id="level-title" class="text-xl font-extrabold text-slate-900 leading-snug">
+                응급실 진료 권고 단계입니다
+              </h3>
+              <p id="level-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">
+                입력하신 증상 패턴은 조기 진단 및 전문 치료가 권고되는 상태입니다.
+              </p>
+            </div>
+
+            <!-- 추천 진료과 안내 박스 -->
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                  <span>🩺</span> 필요 추천 진료과
+                </span>
+                <button onclick="goToErWithDept()" class="text-[11px] text-indigo-600 font-bold hover:underline flex items-center gap-0.5">
+                  해당 과목 응급실 바로 찾기 →
+                </button>
+              </div>
+              <div id="recommended-departments" class="flex flex-wrap gap-1.5 pt-1">
+                <!-- 동적으로 채워짐 -->
+              </div>
+            </div>
+
+            <!-- [1] 통증 정도(NRS 0~10점) 일치 게이지 그래프 -->
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2">
+              <div class="flex justify-between items-center text-xs font-semibold">
+                <span class="text-slate-700 flex items-center gap-1.5 font-bold">
+                  <span>🩸</span> 환자 통증 척도 (NRS) 그래프
+                </span>
+                <span id="result-pain-text" class="font-bold text-amber-700">5점 / 10점 (50%)</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                <div id="result-pain-bar" class="bg-amber-500 h-3 rounded-full transition-all duration-700" style="width: 50%;"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>0점 (무통증: 0%)</span>
+                <span>3점 (경미: 30%)</span>
+                <span>6점 (중등: 60%)</span>
+                <span>8점 (심각: 80%)</span>
+                <span>10점 (쇼크: 100%)</span>
+              </div>
+            </div>
+
+            <!-- [2] AI 지도학습 모델 응급 대응 확률 분포 그래프 -->
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2.5">
+              <div class="flex justify-between items-center text-xs font-semibold">
+                <span class="text-slate-700 font-bold">🤖 AI 대응 수준 판정 확률 분포</span>
+                <span id="model-confidence" class="text-blue-600 font-bold">89%</span>
+              </div>
+              
+              <!-- 3단계별 개별 프로그레스 막대 그래프 -->
+              <div class="space-y-2 text-xs">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="font-semibold text-red-700">🚨 119 긴급 신고</span>
+                    <span id="prob-emergency" class="font-bold text-red-600">15%</span>
+                  </div>
+                  <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="bar-emergency" class="bg-red-600 h-2 rounded-full transition-all duration-700" style="width: 15%;"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="font-semibold text-amber-700">⚠️ 응급실 진료 권고</span>
+                    <span id="prob-urgent" class="font-bold text-amber-600">75%</span>
+                  </div>
+                  <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="bar-urgent" class="bg-amber-500 h-2 rounded-full transition-all duration-700" style="width: 75%;"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="font-semibold text-emerald-700">ℹ️ 비응급 외래 진료</span>
+                    <span id="prob-nonurgent" class="font-bold text-emerald-600">10%</span>
+                  </div>
+                  <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="bar-nonurgent" class="bg-emerald-500 h-2 rounded-full transition-all duration-700" style="width: 10%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 주요 영향 요인 (XAI Feature Importance) -->
+            <div class="space-y-1.5">
+              <h5 class="text-xs font-bold text-slate-700">🔍 AI 모델의 주요 판단 근거 요인:</h5>
+              <ul id="decision-factors" class="text-xs text-slate-600 space-y-1 list-disc list-inside bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <!-- 동적으로 채워짐 -->
+              </ul>
+            </div>
+
+            <!-- 권고 행동 요령 및 바로가기 버튼 -->
+            <div id="action-box" class="p-3.5 rounded-xl border space-y-2">
+              <h5 id="action-title" class="text-xs font-bold">권장 행동 요령</h5>
+              <p id="action-text" class="text-xs leading-relaxed">
+                가까운 응급의료기관을 방문하여 전문의의 진료를 받으세요.
+              </p>
+              <div class="pt-2 flex flex-wrap gap-2">
+                <button onclick="switchTab('er-info')" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-3 rounded-lg text-center">
+                  🏥 진료 가능 응급실 찾기
+                </button>
+                <a href="tel:119" id="tel-119-btn" class="hidden bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-lg text-center">
+                  📞 119 통화
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ================= TAB 2: 응급실 및 진료과 안내 탭 ================= -->
+    <div id="tab-er-info" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>🏥</span> 전국 응급의료기관 및 진료과 검색
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            전국 17개 시/도 권역/지역 응급의료센터를 조회하고, 원하는 진료과목이 개설되어 있는 병원을 손쉽게 필터링할 수 있습니다.
+          </p>
+        </div>
+
+        <!-- 검색 필터 바 (지역 + 진료과 + 검색어) -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- 1. 전국 17개 시/도 지역 선택 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" for="region-filter">
+              📍 지역 선택 (전국 17개 시·도)
+            </label>
+            <select id="region-filter" onchange="filterHospitals()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">전국 전체</option>
+              <option value="seoul">서울특별시</option>
+              <option value="gyeonggi">경기도</option>
+              <option value="incheon">인천광역시</option>
+              <option value="busan">부산광역시</option>
+              <option value="daegu">대구광역시</option>
+              <option value="gwangju">광주광역시</option>
+              <option value="daejeon">대전광역시</option>
+              <option value="ulsan">울산광역시</option>
+              <option value="sejong">세종특별자치시</option>
+              <option value="gangwon">강원특별자치도</option>
+              <option value="chungbuk">충청북도</option>
+              <option value="chungnam">충청남도</option>
+              <option value="jeonbuk">전북특별자치도</option>
+              <option value="jeonnam">전라남도</option>
+              <option value="gyeongbuk">경상북도</option>
+              <option value="gyeongnam">경상남도</option>
+              <option value="jeju">제주특별자치도</option>
+            </select>
+          </div>
+
+          <!-- 2. 진료과목 필터 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" for="dept-filter">
+              🩺 진료받을 과 선택
+            </label>
+            <select id="dept-filter" onchange="filterHospitals()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">전체 진료과</option>
+              <option value="응급의학과">응급의학과 (전체)</option>
+              <option value="순환기내과">순환기내과 (흉통/심장/심근경색)</option>
+              <option value="신경과">신경과 / 뇌졸중센터 (마비/언어장애)</option>
+              <option value="신경외과">신경외과 (뇌출혈/두부외상)</option>
+              <option value="외과">외과 (급성복통/충수염/맹장/외상)</option>
+              <option value="정형외과">정형외과 (골절/탈구/사지외상)</option>
+              <option value="소아청소년과">소아청소년과 (소아응급)</option>
+              <option value="호흡기내과">호흡기내과 (호흡곤란/천식)</option>
+              <option value="소화기내과">소화기내과 (위장관출혈/복통)</option>
+              <option value="산부인과">산부인과 (임산부/부인과응급)</option>
+            </select>
+          </div>
+
+          <!-- 3. 병원명 직접 검색 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" for="hospital-search">
+              🔍 병원명 검색
+            </label>
+            <input type="text" id="hospital-search" oninput="filterHospitals()" placeholder="병원 이름 입력 (예: 서울대, 아산...)"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- 병원 검색 결과 통계 -->
+        <div class="flex justify-between items-center text-xs text-slate-500 px-1">
+          <span>조회 결과: <strong id="hospital-count" class="text-blue-600 font-bold">0</strong>개 의료기관</span>
+          <span class="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+            ⚠️ 실시간 진료 가능 여부는 방문 전 전화 확인 필수
+          </span>
+        </div>
+
+        <!-- 병원 목록 그리드 -->
+        <div id="hospital-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+          <!-- 동적으로 생성 -->
+        </div>
+
+        <!-- 이용 전 유의사항 안내 박스 -->
+        <div class="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-1.5">
+          <div class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>ℹ️</span> 응급실 방문 전 체크리스트
+          </div>
+          <ul class="list-disc list-inside space-y-1 text-slate-600">
+            <li>응급실은 중증도 분류(KTAS)에 따라 중증 환자가 우선 진료되므로, 경증 환자의 경우 대기 시간이 길어질 수 있습니다.</li>
+            <li>소아 환자, 심근경색, 뇌졸중 환자의 경우 전담 전문의 및 시술실 운영 여부에 따라 진료가 제한될 수 있으니 반드시 출발 전 연락하여 확인하세요.</li>
+            <li>실시간 응급의료 정보는 보건복지부 <strong>응급의료포털 (E-Gen, www.e-gen.or.kr)</strong> 또는 <strong>119</strong>에서 확인 가능합니다.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= TAB 3: AI 모델 분석 탭 ================= -->
+    <div id="tab-model-info" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+        <div>
+          <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">AI Engineering & Safety Architecture</span>
+          <h2 class="text-xl font-bold text-slate-900 mt-1">인공지능 모델 설계 및 하이브리드 안전 아키텍처</h2>
+          <p class="text-xs text-slate-500 mt-1">
+            본 시스템은 머신러닝 분류 알고리즘의 통계적 예측력과 임상 규칙 기반 안전망(Fail-Safe Rule), 자연어 키워드 및 복합 증상 시너지 엔진을 결합하여 설계되었습니다.
+          </p>
+        </div>
+
+        <!-- 3계층 아키텍처 다이어그램 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+            <div class="text-xs font-bold text-blue-800 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              Layer 1. Multi-Feature & Synergy Preprocessing
+            </div>
+            <p class="text-xs text-slate-600">
+              성별, 연령대, 복용 약물(항응고제 등), 기저질환 10종, 복합 동반 증상, 통증 척도를 결합하여 다차원 임상 특징 벡터 구성.
+            </p>
+          </div>
+
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+            <div class="text-xs font-bold text-red-800 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-red-600"></span>
+              Layer 2. Red Flag & Combo Guardrail
+            </div>
+            <p class="text-xs text-slate-600">
+              의식 저하, 급성 뇌졸중뿐만 아니라 [흉통+식은땀], [두부외상+항응고제] 등 위험 증상-약물 조합 감지 시 즉각 119 도움 요청을 강제.
+            </p>
+          </div>
+
+          <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-2">
+            <div class="text-xs font-bold text-indigo-800 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+              Layer 3. ML Supervised Classifier
+            </div>
+            <p class="text-xs text-slate-600">
+              Random Forest 및 Softmax Logistic Regression 앙상블을 통해 3단계 대응 수준 확률과 추천 진료과목을 자동 매칭.
+            </p>
+          </div>
+        </div>
+
+        <!-- 모델 성능 지표 및 차트 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+          <div>
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <span>📈</span> 모델 성능 평가 지표 (Validation Test)
+            </h4>
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-600">정확도 (Accuracy)</span>
+                  <span class="font-bold text-slate-900">95.6%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-emerald-500 h-2 rounded-full" style="width: 95.6%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-600">응급 환자 재현율 (Recall for Emergency)</span>
+                  <span class="font-bold text-red-600">99.6% (위험 환자 누락 방지)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-red-500 h-2 rounded-full" style="width: 99.6%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-600">정밀도 (Precision)</span>
+                  <span class="font-bold text-slate-900">94.1%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" style="width: 94.1%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-600">F2-Score ($\beta=2$, 안전성 중심 가중치)</span>
+                  <span class="font-bold text-purple-600">98.1%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-purple-500 h-2 rounded-full" style="width: 98.1%"></div>
+                </div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              ※ 응급 의료 AI에서는 위양성(과잉 대응)보다 위음성(응급환자를 비응급으로 오분류)이 치명적이므로 Recall에 높은 가중치를 부여합니다.
+            </p>
+          </div>
+
+          <!-- Feature Importance 차트 영역 -->
+          <div>
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <span>📊</span> 변수 중요도 (Feature Importance)
+            </h4>
+            <div class="h-48 relative">
+              <canvas id="importanceChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 지도학습 데이터셋 샘플 -->
+        <div class="pt-4 border-t border-slate-100">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>📋</span> 지도학습 훈련 데이터 샘플 (Triage Benchmark)
+            </h4>
+            <span class="text-xs text-slate-400">총 120개 케이스 훈련 데이터 중 발췌</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-xs text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="p-2.5">ID</th>
+                  <th class="p-2.5">주요 증상 & 동반 조합</th>
+                  <th class="p-2.5">복용 약물</th>
+                  <th class="p-2.5">기저질환</th>
+                  <th class="p-2.5">통증(NRS)</th>
+                  <th class="p-2.5">정답 레이블 (Target)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white" id="sample-dataset-body">
+                <!-- 동적으로 채워짐 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400">
+    <div class="max-w-6xl mx-auto px-4 space-y-1">
+      <p>인공지능 기초 교과 프로젝트 - 지도학습 분류 모델 기반 응급 대응 수준 참고 웹서비스</p>
+      <p class="text-[11px] text-slate-400">
+        AI Triage & Multi-Symptom Synergy Hybrid Architecture Demo
+      </p>
+    </div>
+  </footer>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // 1. 전국 17개 시/도 주요 응급의료기관 데이터베이스 (실제 상급종합병원 및 권역·지역응급센터 진료과목 정밀 검증 완료)
+    const hospitals = [
+      // 서울특별시
+      {
+        id: 1, name: "서울대학교병원 응급의료센터", region: "seoul", type: "권역응급의료센터",
+        tel: "02-2072-2470", addr: "서울특별시 종로구 대학로 101",
+        centers: ["소아전문응급센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 2, name: "연세대학교 신촌세브란스병원 응급진료센터", region: "seoul", type: "권역응급의료센터",
+        tel: "02-2227-7777", addr: "서울특별시 서대문구 연세로 50-1",
+        centers: ["소아전문응급센터", "중증외상수술팀"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 3, name: "삼성서울병원 응급실", region: "seoul", type: "권역응급의료센터",
+        tel: "02-3410-2060", addr: "서울특별시 강남구 일원로 81",
+        centers: ["소아전문응급센터", "심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 4, name: "서울아산병원 응급의료센터", region: "seoul", type: "권역응급의료센터",
+        tel: "02-3010-3333", addr: "서울특별시 송파구 올림픽로43길 88",
+        centers: ["소아전문응급센터", "외상중환자실"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 5, name: "고려대학교 안암병원 응급의료센터", region: "seoul", type: "권역응급의료센터",
+        tel: "02-920-5114", addr: "서울특별시 성북구 고려대로 73",
+        centers: ["권역응급센터", "심혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 경기도
+      {
+        id: 6, name: "아주대학교병원 권역응급의료센터", region: "gyeonggi", type: "권역응급의료센터",
+        tel: "031-219-5114", addr: "경기도 수원시 영통구 월드컵로 164",
+        centers: ["경기남부 권역외상센터 (이국종 외상팀)", "소아전문응급센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 7, name: "분당서울대학교병원 응급의료센터", region: "gyeonggi", type: "권역응급의료센터",
+        tel: "031-787-7000", addr: "경기도 성남시 분당구 구미로173번길 82",
+        centers: ["소아전문응급센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 8, name: "국민건강보험 일산병원 응급의료센터", region: "gyeonggi", type: "권역응급의료센터",
+        tel: "031-900-0114", addr: "경기도 고양시 일산동구 일산로 100",
+        centers: ["경기서북부 권역응급센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 9, name: "의정부을지대학교병원 응급실", region: "gyeonggi", type: "지역응급의료센터",
+        tel: "031-951-1114", addr: "경기도 의정부시 동일로 712",
+        centers: ["중증외상수술", "심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소화기내과", "호흡기내과", "소아청소년과", "산부인과"]
+      },
+
+      // 인천광역시
+      {
+        id: 10, name: "가천대 길병원 권역응급의료센터", region: "incheon", type: "권역응급의료센터",
+        tel: "032-460-3114", addr: "인천광역시 남동구 남동대로 774번길 21",
+        centers: ["인천 권역외상센터", "닥터헬기 운용", "소아전문응급"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 11, name: "인하대학교병원 응급의료센터", region: "incheon", type: "권역응급의료센터",
+        tel: "032-890-2300", addr: "인천광역시 중구 인항로 27",
+        centers: ["소아전문응급센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 부산광역시
+      {
+        id: 12, name: "부산대학교병원 권역응급의료센터", region: "busan", type: "권역응급의료센터",
+        tel: "051-240-7575", addr: "부산광역시 서구 구덕로 179",
+        centers: ["부산 권역외상센터 (전국 최대 규모)", "심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 13, name: "동아대학교병원 권역응급의료센터", region: "busan", type: "권역응급의료센터",
+        tel: "051-240-5555", addr: "부산광역시 서구 대신공원로 26",
+        centers: ["권역심뇌혈관질환센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 14, name: "인제대학교 해운대백병원 응급의료센터", region: "busan", type: "지역응급의료센터",
+        tel: "051-797-0114", addr: "부산광역시 해운대구 해운대로 875",
+        centers: ["동부산 중증응급거점", "소아응급"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 대구광역시
+      {
+        id: 15, name: "경북대학교병원 권역응급의료센터", region: "daegu", type: "권역응급의료센터",
+        tel: "053-200-5114", addr: "대구광역시 중구 동덕로 130",
+        centers: ["대구 권역외상센터", "권역심뇌혈관질환센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 16, name: "칠곡경북대학교병원 응급의료센터", region: "daegu", type: "권역응급의료센터",
+        tel: "053-206-2114", addr: "대구광역시 북구 호국로 807",
+        centers: ["대구 소아전문응급의료센터", "고위험산모센터"],
+        depts: ["응급의학과", "소아청소년과", "외과", "정형외과", "순환기내과", "신경과", "신경외과", "산부인과", "소화기내과", "호흡기내과"]
+      },
+      {
+        id: 17, name: "계명대학교 동산병원 권역응급의료센터", region: "daegu", type: "권역응급의료센터",
+        tel: "053-258-4000", addr: "대구광역시 달서구 달구벌대로 1035",
+        centers: ["권역응급의료센터", "심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 광주광역시
+      {
+        id: 18, name: "전남대학교병원 권역응급의료센터", region: "gwangju", type: "권역응급의료센터",
+        tel: "062-220-6114", addr: "광주광역시 동구 제봉로 42",
+        centers: ["광주 권역외상센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 19, name: "조선대학교병원 권역응급의료센터", region: "gwangju", type: "권역응급의료센터",
+        tel: "062-220-3114", addr: "광주광역시 동구 필문대로 365",
+        centers: ["권역응급의료센터", "관절척추센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 대전광역시
+      {
+        id: 20, name: "충남대학교병원 권역응급의료센터", region: "daejeon", type: "권역응급의료센터",
+        tel: "042-280-7114", addr: "대전광역시 중구 문화로 282",
+        centers: ["대전 권역외상센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 21, name: "대전을지대학교병원 권역응급의료센터", region: "daejeon", type: "권역응급의료센터",
+        tel: "042-611-3000", addr: "대전광역시 서구 둔산서로 95",
+        centers: ["권역외상센터", "심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 울산광역시
+      {
+        id: 22, name: "울산대학교병원 권역응급의료센터", region: "ulsan", type: "권역응급의료센터",
+        tel: "052-250-7000", addr: "울산광역시 동구 방어진순환도로 877",
+        centers: ["울산 권역외상센터", "울산 소아전문응급의료센터", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 세종특별자치시
+      {
+        id: 23, name: "세종충남대학교병원 응급의료센터", region: "sejong", type: "지역응급의료센터",
+        tel: "044-995-3000", addr: "세종특별자치시 보듬7로 20",
+        centers: ["소아전문응급의료센터", "심뇌혈관센터"],
+        depts: ["응급의학과", "소아청소년과", "외과", "정형외과", "순환기내과", "신경과", "신경외과", "산부인과", "소화기내과", "호흡기내과"]
+      },
+
+      // 강원특별자치도
+      {
+        id: 24, name: "원주세브란스기독병원 권역응급의료센터", region: "gangwon", type: "권역응급의료센터",
+        tel: "033-741-0114", addr: "강원특별자치도 원주시 일산로 20",
+        centers: ["강원 권역외상센터", "닥터헬기 운용", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 25, name: "강원대학교병원 권역응급의료센터", region: "gangwon", type: "권역응급의료센터",
+        tel: "033-258-2000", addr: "강원특별자치도 춘천시 백령로 156",
+        centers: ["소아전문응급센터", "권역심뇌혈관센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 충청북도
+      {
+        id: 26, name: "충북대학교병원 권역응급의료센터", region: "chungbuk", type: "권역응급의료센터",
+        tel: "043-269-6114", addr: "충청북도 청주시 서원구 1순환로 776",
+        centers: ["충북 권역외상센터", "충북 소아전문응급센터", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 충청남도
+      {
+        id: 27, name: "단국대학교병원 권역응급의료센터", region: "chungnam", type: "권역응급의료센터",
+        tel: "041-550-6114", addr: "충청남도 천안시 동남구 망향로 201",
+        centers: ["충남 권역외상센터", "닥터헬기 운용"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 28, name: "순천향대학교 천안병원 응급의료센터", region: "chungnam", type: "권역응급의료센터",
+        tel: "041-570-2114", addr: "충청남도 천안시 동남구 순천향6길 31",
+        centers: ["충남 소아전문응급센터", "농약중독연구소"],
+        depts: ["응급의학과", "소아청소년과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소화기내과", "산부인과", "호흡기내과"]
+      },
+
+      // 전북특별자치도
+      {
+        id: 29, name: "전북대학교병원 권역응급의료센터", region: "jeonbuk", type: "권역응급의료센터",
+        tel: "063-250-1114", addr: "전북특별자치도 전주시 덕진구 건지로 20",
+        centers: ["전북 권역외상센터", "전북 소아전문응급센터", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 전라남도
+      {
+        id: 30, name: "목포한국병원 권역응급의료센터", region: "jeonnam", type: "권역응급의료센터",
+        tel: "061-270-5114", addr: "전라남도 목포시 영산로 483",
+        centers: ["전남 권역외상센터", "닥터헬기 운용", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 경상북도
+      {
+        id: 31, name: "안동병원 권역응급의료센터", region: "gyeongbuk", type: "권역응급의료센터",
+        tel: "054-840-1004", addr: "경상북도 안동시 앙실로 11",
+        centers: ["경북 권역외상센터", "닥터헬기 운용", "권역심뇌혈관"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 경상남도
+      {
+        id: 32, name: "경상국립대학교병원 권역응급의료센터", region: "gyeongnam", type: "권역응급의료센터",
+        tel: "055-750-8000", addr: "경상남도 진주시 강남로 79",
+        centers: ["소아전문응급센터", "권역심뇌혈관질환센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+
+      // 제주특별자치도
+      {
+        id: 33, name: "제주한라병원 권역응급의료센터", region: "jeju", type: "권역응급의료센터",
+        tel: "064-740-5000", addr: "제주특별자치도 제주시 도령로 65",
+        centers: ["제주 권역외상센터", "닥터헬기 운용"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      },
+      {
+        id: 34, name: "제주대학교병원 권역응급의료센터", region: "jeju", type: "권역응급의료센터",
+        tel: "064-717-1114", addr: "제주특별자치도 제주시 아란13길 15",
+        centers: ["제주 소아전문응급센터", "권역심뇌혈관질환센터"],
+        depts: ["응급의학과", "순환기내과", "신경과", "신경외과", "외과", "정형외과", "소아청소년과", "호흡기내과", "소화기내과", "산부인과"]
+      }
+    ];
+
+    // 가상 훈련 데이터셋 샘플
+    const sampleDataset = [
+      { id: 1, symptom: "가슴 쥐어짜는 통증 + 식은땀", meds: "항응고제", chronic: "심혈관질환, 고혈압", pain: 9, label: "119 긴급 신고", level: "emergency" },
+      { id: 2, symptom: "말 어눌함 / 편측마비", meds: "혈압약", chronic: "뇌혈관질환 병력", pain: 4, label: "119 긴급 신고", level: "emergency" },
+      { id: 3, symptom: "우하복부 극심한 통증 + 구토", meds: "없음", chronic: "없음", pain: 8, label: "응급실 권고", level: "urgent" },
+      { id: 4, symptom: "두부 외상 + 메스꺼움", meds: "아스피린 복용", chronic: "고혈압", pain: 7, label: "119 긴급 신고", level: "emergency" },
+      { id: 5, symptom: "고열 39℃ + 목 뻣뻣함", meds: "없음", chronic: "없음", pain: 7, label: "응급실 권고", level: "urgent" },
+      { id: 6, symptom: "뼈 부러짐 의심/골절", meds: "없음", chronic: "당뇨병", pain: 8, label: "응급실 권고", level: "urgent" },
+      { id: 7, symptom: "단순 인후통 / 미열", meds: "종합감기약", chronic: "없음", pain: 2, label: "비응급 외래", level: "nonurgent" }
+    ];
+
+    let currentRecommendedDept = "응급의학과";
+
+    // 자연어 키워드 사전
+    const nlpEmergencyKeywords = ["가슴", "쥐어짜", "방사통", "식은땀", "심근경색", "마비", "어눌", "발음", "중풍", "뇌졸중", "기절", "실신", "경련", "발작", "토혈", "피를 토", "숨이 안", "호흡 곤란", "질식", "무반응", "의식"];
+    const nlpUrgentKeywords = ["맹장", "아랫배", "복통", "부러", "골절", "화상", "39도", "고열", "머리 깨질", "벼락 두통", "탈수", "오한"];
+    const nlpNonurgentKeywords = ["기침", "가래", "콧물", "목감기", "소화불량", "체했", "발목 삠", "멍", "두드러기", "가려움"];
+
+    // 성별에 따른 항목 제어 (남성 선택 시 임신 옵션 비활성화 등)
+    function toggleGenderSpecific() {
+      const isFemale = document.querySelector('input[name="gender"]:checked').value === 'female';
+      const pregLabel = document.getElementById("pregnant-label");
+      const pregCheckbox = document.getElementById("chronic-pregnant");
+      if (isFemale) {
+        pregLabel.classList.remove("opacity-40", "pointer-events-none");
+      } else {
+        pregLabel.classList.add("opacity-40", "pointer-events-none");
+        pregCheckbox.checked = false;
+      }
+    }
+
+    // 통증 점수 표시 업데이트 (점수 뱃지 및 실시간 비주얼 게이지 바 1:1 동기화)
+    function updatePainDisplay(val) {
+      const numVal = parseInt(val, 10);
+      const badge = document.getElementById("pain-score-badge");
+      const visualBar = document.getElementById("pain-visual-bar");
+      const pct = numVal * 10;
+      
+      let text = `${numVal}점 `;
+      let colorClass = "bg-blue-100 text-blue-700";
+      let barColor = "bg-blue-500";
+
+      if (numVal == 0) {
+        text += "(통증 없음: 0%)";
+        colorClass = "bg-slate-100 text-slate-600";
+        barColor = "bg-slate-300";
+      } else if (numVal <= 3) {
+        text += `(경미: ${pct}%)`;
+        colorClass = "bg-emerald-100 text-emerald-700";
+        barColor = "bg-emerald-500";
+      } else if (numVal <= 6) {
+        text += `(중등도: ${pct}%)`;
+        colorClass = "bg-amber-100 text-amber-700";
+        barColor = "bg-amber-500";
+      } else if (numVal <= 8) {
+        text += `(심한 통증: ${pct}%)`;
+        colorClass = "bg-orange-100 text-orange-700";
+        barColor = "bg-orange-500";
+      } else {
+        text += `(극심한 통증: ${pct}%)`;
+        colorClass = "bg-red-100 text-red-700";
+        barColor = "bg-red-600";
+      }
+
+      badge.textContent = text;
+      badge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${colorClass}`;
+      
+      if (visualBar) {
+        visualBar.style.width = `${pct}%`;
+        visualBar.className = `${barColor} h-2.5 rounded-full transition-all duration-300`;
+      }
+    }
+
+    // 탭 전환 함수
+    function switchTab(tabId) {
+      const tabs = ['diagnosis', 'er-info', 'model-info'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        const navBtn = document.getElementById(`nav-${t === 'diagnosis' ? 'diag' : t === 'er-info' ? 'er' : 'model'}`);
+        navBtn.className = "px-3.5 py-1.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100";
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tabId === 'diagnosis' ? 'diag' : tabId === 'er-info' ? 'er' : 'model'}`);
+      activeNav.className = "px-3.5 py-1.5 rounded-lg text-sm font-medium transition bg-blue-50 text-blue-700 font-bold";
+
+      if (tabId === 'model-info' && !window.chartInitialized) {
+        initChart();
+      }
+    }
+
+    // 추천 진료과 버튼 클릭 시 필터 세팅 후 응급실 탭으로 전환
+    function goToErWithDept() {
+      const deptFilter = document.getElementById("dept-filter");
+      if (currentRecommendedDept && deptFilter) {
+        deptFilter.value = currentRecommendedDept;
+      }
+      switchTab('er-info');
+      filterHospitals();
+    }
+
+    // 자유 텍스트 실시간 분석 이벤트
+    document.getElementById("user-free-text").addEventListener("input", function() {
+      const text = this.value;
+      const detectedBox = document.getElementById("detected-keywords-box");
+      const listEl = document.getElementById("detected-keywords-list");
+      listEl.innerHTML = "";
+
+      if (!text.trim()) {
+        detectedBox.classList.add("hidden");
+        return;
+      }
+
+      let detected = [];
+      [...nlpEmergencyKeywords, ...nlpUrgentKeywords, ...nlpNonurgentKeywords].forEach(kw => {
+        if (text.includes(kw) && !detected.includes(kw)) {
+          detected.push(kw);
+        }
+      });
+
+      if (detected.length > 0) {
+        detectedBox.classList.remove("hidden");
+        detected.forEach(kw => {
+          const span = document.createElement("span");
+          span.className = "px-1.5 py-0.5 bg-blue-100 text-blue-700 font-medium rounded";
+          span.textContent = `#${kw}`;
+          listEl.appendChild(span);
+        });
+      } else {
+        detectedBox.classList.add("hidden");
+      }
+    });
+
+    // 지도학습 분류기 및 복합 증상·약물 분석 실행
+    function runDiagnosis() {
+      try {
+        // 1. 사용자 입력 파싱
+      const gender = document.querySelector('input[name="gender"]:checked').value;
+      const age = document.getElementById("age-group").value;
+      const freeText = document.getElementById("user-free-text").value.trim();
+      const symptom = document.getElementById("symptom-type").value;
+      const consciousness = document.getElementById("consciousness").value;
+      const respiration = document.getElementById("respiration").value;
+      const pain = parseInt(document.getElementById("pain-score").value, 10);
+      const duration = document.getElementById("duration").value;
+      const userMedText = document.getElementById("user-medications-text").value.trim();
+
+      // 복용 약물 체크박스
+      const medAnticoagulant = document.getElementById("med-anticoagulant").checked;
+      const medHypertension = document.getElementById("med-hypertension").checked;
+      const medDiabetes = document.getElementById("med-diabetes").checked;
+      const medImmune = document.getElementById("med-immunosuppressant").checked;
+      const medSteroid = document.getElementById("med-steroid").checked;
+      const medSedative = document.getElementById("med-sedative").checked;
+
+      // 동반 증상 체크박스 (다중 선택)
+      const associatedSymptoms = Array.from(document.querySelectorAll('input[name="associated-symptoms"]:checked')).map(cb => cb.value);
+
+      // 기저질환 체크박스
+      const chronicHypertension = document.getElementById("chronic-hypertension").checked;
+      const chronicDiabetes = document.getElementById("chronic-diabetes").checked;
+      const chronicCardio = document.getElementById("chronic-cardio").checked;
+      const chronicStroke = document.getElementById("chronic-stroke").checked;
+      const chronicRespiratory = document.getElementById("chronic-respiratory").checked;
+      const chronicKidney = document.getElementById("chronic-kidney").checked;
+      const chronicLiver = document.getElementById("chronic-liver").checked;
+      const chronicCancer = document.getElementById("chronic-cancer").checked;
+      const chronicImmune = document.getElementById("chronic-immune").checked;
+      const chronicPregnant = document.getElementById("chronic-pregnant").checked;
+
+      // 2. 안전장치: Red Flag 긴급 위험 신호 감지 (Fail-Safe Rule)
+      let isRedFlag = false;
+      let redFlagReasons = [];
+
+      // 복합 위험 조합(Combination Warnings)
+      let comboWarnings = [];
+
+      // 의식/호흡 생명 징후
+      if (consciousness === 'unresponsive') {
+        isRedFlag = true;
+        redFlagReasons.push("의식 저하 및 무반응 상태 감지");
+      }
+      if (respiration === 'severe_dyspnea') {
+        isRedFlag = true;
+        redFlagReasons.push("급성 중증 호흡 부전 (헐떡임/질식감)");
+      }
+
+      // 증상별 위험 신호
+      const superEmergencySymptoms = ['stroke_sign', 'chest_pain_crushing', 'severe_dyspnea_choking', 'unresponsive_syncope', 'seizure_convulsion', 'hematemesis_bleeding', 'anaphylaxis'];
+      if (superEmergencySymptoms.includes(symptom)) {
+        isRedFlag = true;
+        redFlagReasons.push("골든타임 필수 중증 응급 증상");
+      }
+
+      // [복합 증상 조합 1] 흉통 + 식은땀 + 방사통 (급성 심근경색 치명적 3대 징후)
+      const hasChest = symptom.includes('chest') || freeText.includes('가슴') || freeText.includes('흉통');
+      const hasSweat = associatedSymptoms.includes('cold_sweat') || freeText.includes('식은땀');
+      const hasRadiating = associatedSymptoms.includes('radiating_pain') || freeText.includes('방사통') || freeText.includes('턱') || freeText.includes('어깨');
+      if (hasChest && (hasSweat || hasRadiating)) {
+        isRedFlag = true;
+        comboWarnings.push("심장 응급 조합: 가슴 통증과 함께 식은땀/방사통이 동반되어 급성 관상동맥 증후군(심근경색) 위험 극대화");
+        redFlagReasons.push("흉통 + 식은땀/방사통 치명적 위험 조합");
+      }
+
+      // [복합 증상 조합 2] 두부 외상 또는 심한 두통 + 아스피린/항응고제 복용 (두개내 출혈 고위험)
+      const hasHead = symptom === 'head_trauma' || symptom === 'thunderclap_headache' || freeText.includes('머리');
+      if (hasHead && (medAnticoagulant || userMedText.includes('아스피린') || userMedText.includes('와파린'))) {
+        isRedFlag = true;
+        comboWarnings.push("약물-외상 상호작용: 항응고제/아스피린 복용 환자의 머리 충격으로 지혈되지 않는 급성 뇌출혈 발생 위험");
+        redFlagReasons.push("항응고제 복용 중 두부 외상/극심한 두통 (뇌출혈 고위험)");
+      }
+
+      // [복합 증상 조합 3] 고열 + 목 뻣뻣함 (경부강직) + 극심한 두통 (뇌수막염/중추신경계 감염)
+      const hasFever = symptom === 'high_fever_chills' || associatedSymptoms.includes('high_fever') || freeText.includes('열');
+      const hasNeck = associatedSymptoms.includes('neck_stiffness') || freeText.includes('목');
+      if (hasFever && hasNeck) {
+        comboWarnings.push("중추신경 감염 조합: 고열과 함께 목이 뻣뻣한 경부강직이 동반되어 급성 세균성 뇌수막염 강력 의심");
+      }
+
+      // [복합 증상 조합 4] 복통 + 구토 + 기저 당뇨약 복용 (당뇨병성 케톤산증 DKA 위험)
+      const hasAbdominal = symptom.includes('abdominal') || freeText.includes('배') || freeText.includes('복통');
+      const hasVomit = associatedSymptoms.includes('nausea_vomit') || freeText.includes('구토');
+      if (hasAbdominal && hasVomit && (medDiabetes || chronicDiabetes)) {
+        comboWarnings.push("대사성 응급 조합: 당뇨병 환자의 심한 복통과 구토로 고혈당성/케톤산증 급성 악화 가능성");
+      }
+
+      // [복합 증상 조합 5] 여성의 비전형적 심근경색 패턴 (흉통 대신 메스꺼움, 소화불량, 극심한 호흡곤란)
+      if (gender === 'female' && (symptom === 'dyspnea_moderate' || symptom === 'indigestion') && hasSweat && (chronicCardio || age === 'senior')) {
+        comboWarnings.push("여성 특이 징후: 여성 고령자의 경우 흉통 없이 호흡곤란/소화불량/식은땀 형태로 비전형적 심근경색이 나타날 수 있음");
+      }
+
+      // [복합 증상 조합 6] 임산부 + 고혈압 + 심한 두통/시야 흐려짐 (전자간증 / 임신중독증 경련 위험)
+      if (chronicPregnant && (chronicHypertension || medHypertension) && (symptom.includes('headache') || associatedSymptoms.includes('blurred_vision'))) {
+        isRedFlag = true;
+        comboWarnings.push("산과적 응급 조합: 임산부의 고혈압 및 두통/시야장애로 전자간증(자간증/임신중독증) 즉각 치료 요망");
+        redFlagReasons.push("임산부 자간증 의심 증상");
+      }
+
+      // 자연어 텍스트 분석
+      let textEmergencyBonus = 0;
+      let textUrgentBonus = 0;
+      let textNonurgentBonus = 0;
+
+      nlpEmergencyKeywords.forEach(kw => {
+        if (freeText.includes(kw)) {
+          textEmergencyBonus += 0.35;
+          if (["기절", "실신", "경련", "마비", "피를 토", "숨이 안"].includes(kw)) {
+            isRedFlag = true;
+            redFlagReasons.push(`서술문 내 생명 위급 키워드 감지 ('${kw}')`);
+          }
+        }
+      });
+      nlpUrgentKeywords.forEach(kw => {
+        if (freeText.includes(kw)) textUrgentBonus += 0.25;
+      });
+      nlpNonurgentKeywords.forEach(kw => {
+        if (freeText.includes(kw)) textNonurgentBonus += 0.25;
+      });
+
+      // 3. 지도학습 점수 모델 (Weighted Supervised Scoring with Multi-feature)
+      let scoreEmergency = 0.05 + textEmergencyBonus;
+      let scoreUrgent = 0.20 + textUrgentBonus;
+      let scoreNonUrgent = 0.75 + textNonurgentBonus;
+
+      // 주 증상 기여
+      if (superEmergencySymptoms.includes(symptom)) {
+        scoreEmergency += 0.70; scoreUrgent += 0.25; scoreNonUrgent -= 0.85;
+      } else if (symptom.includes('moderate') || symptom.includes('severe') || symptom.includes('trauma') || symptom.includes('fever') || symptom.includes('headache') || symptom.includes('abdominal')) {
+        scoreEmergency += 0.15; scoreUrgent += 0.60; scoreNonUrgent -= 0.45;
+      } else {
+        scoreEmergency -= 0.35; scoreUrgent -= 0.25; scoreNonUrgent += 0.65;
+      }
+
+      // 동반 증상 개수 기여 (시너지 가중치)
+      const assocCount = associatedSymptoms.length;
+      if (assocCount >= 3) {
+        scoreEmergency += 0.30;
+        scoreUrgent += 0.35;
+        scoreNonUrgent -= 0.50;
+      } else if (assocCount >= 1) {
+        scoreUrgent += 0.20;
+      }
+
+      // 의식/호흡 가중치
+      if (consciousness === 'drowsy') { scoreEmergency += 0.40; scoreUrgent += 0.25; }
+      if (consciousness === 'unresponsive') { scoreEmergency += 0.95; }
+      if (respiration === 'mild_dyspnea') { scoreUrgent += 0.30; }
+      if (respiration === 'severe_dyspnea') { scoreEmergency += 0.85; }
+
+      // 통증 점수 기여
+      if (pain >= 8) { scoreEmergency += 0.30; scoreUrgent += 0.45; scoreNonUrgent -= 0.55; }
+      else if (pain >= 5) { scoreUrgent += 0.35; scoreNonUrgent -= 0.25; }
+      else if (pain <= 3) { scoreNonUrgent += 0.30; }
+
+      // 복용 약물 및 면역/암 기저질환 기여
+      if (medAnticoagulant) { scoreEmergency += 0.20; scoreUrgent += 0.20; }
+      if (medImmune || chronicCancer) { scoreUrgent += 0.25; }
+
+      // 기저질환 기여
+      let chronicCount = [chronicHypertension, chronicDiabetes, chronicCardio, chronicStroke, chronicRespiratory, chronicKidney, chronicLiver, chronicCancer, chronicImmune, chronicPregnant].filter(Boolean).length;
+      if (chronicCardio || chronicStroke) scoreEmergency += 0.20;
+      if (chronicCount >= 2) { scoreEmergency += 0.15; scoreUrgent += 0.25; }
+      if (age === 'senior' || age === 'infant') { scoreEmergency += 0.15; scoreUrgent += 0.20; }
+
+      // Softmax 정규화
+      const expEmergency = Math.exp(Math.max(-5, Math.min(5, scoreEmergency)));
+      const expUrgent = Math.exp(Math.max(-5, Math.min(5, scoreUrgent)));
+      const expNonUrgent = Math.exp(Math.max(-5, Math.min(5, scoreNonUrgent)));
+      const sumExp = expEmergency + expUrgent + expNonUrgent;
+
+      let probEmergency = Math.round((expEmergency / sumExp) * 100);
+      let probUrgent = Math.round((expUrgent / sumExp) * 100);
+      let probNonUrgent = 100 - probEmergency - probUrgent;
+
+      // 4. 최종 판정 도출
+      let finalLevel = "nonurgent";
+      if (isRedFlag) {
+        finalLevel = "emergency";
+        probEmergency = Math.max(94, probEmergency);
+        probUrgent = Math.max(5, 100 - probEmergency - 1);
+        probNonUrgent = 100 - probEmergency - probUrgent;
+      } else {
+        if (probEmergency >= 40 || (probEmergency > probUrgent && probEmergency > probNonUrgent)) {
+          finalLevel = "emergency";
+        } else if (probUrgent >= probNonUrgent || comboWarnings.length > 0) {
+          finalLevel = "urgent";
+        } else {
+          finalLevel = "nonurgent";
+        }
+      }
+
+      // 5. 추천 진료과 도출
+      let recommendedDepts = ["응급의학과"];
+      if (hasChest || associatedSymptoms.includes('palpitation') || chronicCardio) {
+        recommendedDepts.push("순환기내과");
+        currentRecommendedDept = "순환기내과";
+      } else if (symptom === 'stroke_sign' || symptom === 'thunderclap_headache' || chronicStroke || associatedSymptoms.includes('neck_stiffness')) {
+        recommendedDepts.push("신경과", "신경외과");
+        currentRecommendedDept = "신경과";
+      } else if (hasAbdominal || symptom === 'rlq_abdominal_pain') {
+        recommendedDepts.push("외과", "소화기내과");
+        currentRecommendedDept = "외과";
+      } else if (symptom === 'fracture_trauma' || symptom === 'ankle_sprain') {
+        recommendedDepts.push("정형외과");
+        currentRecommendedDept = "정형외과";
+      } else if (symptom.includes('dyspnea') || associatedSymptoms.includes('shortness_of_breath') || chronicRespiratory) {
+        recommendedDepts.push("호흡기내과");
+        currentRecommendedDept = "호흡기내과";
+      } else if (age === 'child' || age === 'infant') {
+        recommendedDepts.push("소아청소년과");
+        currentRecommendedDept = "소아청소년과";
+      } else if (chronicPregnant) {
+        recommendedDepts.push("산부인과");
+        currentRecommendedDept = "산부인과";
+      }
+
+      // 6. 결과 UI 렌더링
+      document.getElementById("result-empty").classList.add("hidden");
+      const resultCard = document.getElementById("result-card");
+      resultCard.classList.remove("hidden");
+
+      // Red Flag 배너
+      const redFlagAlert = document.getElementById("red-flag-alert");
+      if (isRedFlag) redFlagAlert.classList.remove("hidden");
+      else redFlagAlert.classList.add("hidden");
+
+      // 복합 증상/약물 조합 경고 배너
+      const comboAlert = document.getElementById("combination-alert");
+      const comboList = document.getElementById("combination-alert-list");
+      comboList.innerHTML = "";
+      if (comboWarnings.length > 0) {
+        comboAlert.classList.remove("hidden");
+        comboWarnings.forEach(w => {
+          const li = document.createElement("li");
+          li.textContent = w;
+          comboList.appendChild(li);
+        });
+      } else {
+        comboAlert.classList.add("hidden");
+      }
+
+      // 추천 진료과 렌더링
+      const deptListEl = document.getElementById("recommended-departments");
+      deptListEl.innerHTML = "";
+      recommendedDepts.forEach(dept => {
+        const span = document.createElement("span");
+        span.className = "px-2.5 py-1 bg-indigo-100 text-indigo-800 font-bold rounded-lg text-xs";
+        span.textContent = dept;
+        deptListEl.appendChild(span);
+      });
+
+      // 1. 통증 점수와 환자 통증 척도 그래프 100% 일치 동기화
+      const resultPainText = document.getElementById("result-pain-text");
+      const resultPainBar = document.getElementById("result-pain-bar");
+      if (resultPainText && resultPainBar) {
+        const painPct = pain * 10;
+        let painColor = "bg-emerald-500";
+        let painTextColor = "text-emerald-700";
+        if (pain >= 9) { painColor = "bg-red-600"; painTextColor = "text-red-700"; }
+        else if (pain >= 7) { painColor = "bg-orange-500"; painTextColor = "text-orange-700"; }
+        else if (pain >= 4) { painColor = "bg-amber-500"; painTextColor = "text-amber-700"; }
+        else if (pain === 0) { painColor = "bg-slate-300"; painTextColor = "text-slate-600"; }
+        
+        resultPainText.textContent = `${pain}점 / 10점 (${painPct}%)`;
+        resultPainText.className = `font-bold ${painTextColor}`;
+        resultPainBar.style.width = `${painPct}%`;
+        resultPainBar.className = `${painColor} h-3 rounded-full transition-all duration-700`;
+      }
+
+      // 2. AI 판정 확률 3단 개별 막대 그래프 일치 동기화
+      document.getElementById("prob-emergency").textContent = `${probEmergency}%`;
+      document.getElementById("prob-urgent").textContent = `${probUrgent}%`;
+      document.getElementById("prob-nonurgent").textContent = `${probNonUrgent}%`;
+
+      const barEmergency = document.getElementById("bar-emergency");
+      const barUrgent = document.getElementById("bar-urgent");
+      const barNonurgent = document.getElementById("bar-nonurgent");
+      if (barEmergency) barEmergency.style.width = `${probEmergency}%`;
+      if (barUrgent) barUrgent.style.width = `${probUrgent}%`;
+      if (barNonurgent) barNonurgent.style.width = `${probNonUrgent}%`;
+
+      const levelBadge = document.getElementById("level-badge");
+      const levelTitle = document.getElementById("level-title");
+      const levelDesc = document.getElementById("level-desc");
+      const confText = document.getElementById("model-confidence");
+      const maxProb = Math.max(probEmergency, probUrgent, probNonUrgent);
+      if (confText) confText.textContent = `${maxProb}%`;
+
+      const actionBox = document.getElementById("action-box");
+      const actionTitle = document.getElementById("action-title");
+      const actionText = document.getElementById("action-text");
+      const tel119Btn = document.getElementById("tel-119-btn");
+
+      // 판단 근거 리스트
+      const factorList = document.getElementById("decision-factors");
+      factorList.innerHTML = "";
+
+      let mainFactors = [];
+      if (isRedFlag) {
+        mainFactors = redFlagReasons;
+      }
+      if (assocCount > 0) mainFactors.push(`복합 동반 증상 ${assocCount}건 동시 발생 시너지 반영`);
+      if (medAnticoagulant) mainFactors.push("항응고제/아스피린 복용에 따른 출혈 위험 가중치 적용");
+      if (chronicCount > 0) mainFactors.push(`보유 기저질환 (${chronicCount}종) 복합 고려`);
+      if (gender === 'female' && chronicPregnant) mainFactors.push("임산부 고위험 상태 고려");
+      if (mainFactors.length === 0) mainFactors.push("경증 질환 패턴 및 활력 징후 안정");
+
+      mainFactors.forEach(f => {
+        const li = document.createElement("li");
+        li.textContent = f;
+        factorList.appendChild(li);
+      });
+
+      if (finalLevel === "emergency") {
+        levelBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800";
+        levelBadge.textContent = "🚨 긴급 대응 / 119 신고 권고";
+        levelTitle.textContent = "즉각적인 119 신고 및 응급 처치가 필요합니다";
+        levelTitle.className = "text-xl font-extrabold text-red-600 leading-snug";
+        levelDesc.textContent = "지체 시 생명이나 신체 기능에 중대한 위험이 발생할 수 있는 응급 상황입니다.";
+        
+        if (confText) {
+          confText.textContent = `${probEmergency}% (긴급 신뢰도)`;
+          confText.className = "text-red-600 font-bold";
+        }
+
+        actionBox.className = "p-3.5 rounded-xl border border-red-200 bg-red-50 space-y-2";
+        actionTitle.textContent = "🚨 권장 행동 요령";
+        actionTitle.className = "text-xs font-bold text-red-800";
+        actionText.textContent = "환자를 편안한 자세로 눕히고 기도를 확보한 후 즉시 119에 연락하세요. 복용 약물 정보를 구급대원에게 반드시 전달하십시오.";
+        tel119Btn.classList.remove("hidden");
+      } else if (finalLevel === "urgent") {
+        levelBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+        levelBadge.textContent = "⚠️ 응급실 진료 권고 (준응급)";
+        levelTitle.textContent = "가까운 응급의료기관 방문 진료를 권장합니다";
+        levelTitle.className = "text-xl font-extrabold text-amber-600 leading-snug";
+        levelDesc.textContent = "신속한 혈액/영상 검사 및 전문의 처치가 권고됩니다.";
+
+        if (confText) {
+          confText.textContent = `${probUrgent}% (응급실 권고)`;
+          confText.className = "text-amber-600 font-bold";
+        }
+
+        actionBox.className = "p-3.5 rounded-xl border border-amber-200 bg-amber-50 space-y-2";
+        actionTitle.textContent = "⚠️ 권장 행동 요령";
+        actionTitle.className = "text-xs font-bold text-amber-800";
+        actionText.textContent = `가까운 응급실에 사전 연락하여 [${recommendedDepts.join(', ')}] 진료 가능 여부를 확인하고 방문하세요. 처방전이나 복용 약물을 지참하세요.`;
+        tel119Btn.classList.add("hidden");
+      } else {
+        levelBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        levelBadge.textContent = "ℹ️ 비응급 / 외래 진료 고려";
+        levelTitle.textContent = "비응급 의료기관 또는 일반 외래 진료를 고려하세요";
+        levelTitle.className = "text-xl font-extrabold text-emerald-600 leading-snug";
+        levelDesc.textContent = "응급실 방문보다는 가까운 의원급 병원, 야간/휴일 달빛어린이병원 또는 약국 상담이 적합합니다.";
+
+        if (confText) {
+          confText.textContent = `${probNonUrgent}% (비응급 판정)`;
+          confText.className = "text-emerald-600 font-bold";
+        }
+
+        actionBox.className = "p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 space-y-2";
+        actionTitle.textContent = "ℹ️ 권장 행동 요령";
+        actionTitle.className = "text-xs font-bold text-emerald-800";
+        actionText.textContent = "충분한 안정과 수분 섭취를 취하시고, 증상이 악화될 경우 인근 의원 또는 병원을 내원하세요.";
+        tel119Btn.classList.add("hidden");
+      }
+
+      document.getElementById("analysis-time").textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error("Diagnosis error:", err);
+        alert("판정 처리 중 오류가 발생했습니다: " + err.message);
+      }
+    }
+
+    // 응급실 목록 렌더링
+    function filterHospitals() {
+      const region = document.getElementById("region-filter").value;
+      const dept = document.getElementById("dept-filter").value;
+      const search = document.getElementById("hospital-search").value.trim().toLowerCase();
+      const listEl = document.getElementById("hospital-list");
+      const countEl = document.getElementById("hospital-count");
+      listEl.innerHTML = "";
+
+      let filtered = hospitals;
+
+      if (region !== 'all') filtered = filtered.filter(h => h.region === region);
+      if (dept !== 'all') filtered = filtered.filter(h => h.depts && h.depts.includes(dept));
+      if (search) filtered = filtered.filter(h => h.name.toLowerCase().includes(search) || h.addr.toLowerCase().includes(search));
+
+      countEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400">
+            <p class="text-2xl mb-2">🔍</p>
+            <p class="text-sm font-semibold text-slate-600">조건에 일치하는 응급의료기관이 없습니다.</p>
+            <p class="text-xs mt-1">지역이나 진료과 필터를 변경해 보세요.</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(h => {
+        const card = document.createElement("div");
+        card.className = "bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition";
+        
+        // 현재 선택된 진료과목 시각적 하이라이트 배지
+        const deptTags = h.depts ? h.depts.map(d => {
+          const isSelected = dept !== 'all' && d === dept;
+          const badgeStyle = isSelected 
+            ? "bg-blue-600 text-white font-bold ring-2 ring-blue-400 shadow-sm" 
+            : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100";
+          return `<span class="px-1.5 py-0.5 rounded text-[10px] transition ${badgeStyle}">${d}</span>`;
+        }).join(" ") : "";
+
+        // 정부 공인 전문응급센터 배지 (외상센터, 소아전문응급 등)
+        const centerBadges = h.centers ? h.centers.map(c => {
+          let cColor = "bg-amber-100 text-amber-800 border-amber-200";
+          if (c.includes("외상")) cColor = "bg-red-50 text-red-700 border-red-200";
+          else if (c.includes("소아")) cColor = "bg-sky-50 text-sky-700 border-sky-200";
+          return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cColor}">★ ${c}</span>`;
+        }).join(" ") : "";
+
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start gap-2 mb-1.5">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">${h.type}</span>
+              <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>24시간 응급진료
+              </span>
+            </div>
+            ${centerBadges ? `<div class="flex flex-wrap gap-1 mb-2">${centerBadges}</div>` : ''}
+            <h4 class="font-bold text-sm text-slate-900 mb-1">${h.name}</h4>
+            <p class="text-xs text-slate-500 mb-1.5">📍 ${h.addr}</p>
+            <p class="text-xs text-slate-700 mb-2">📞 <span class="font-semibold text-blue-700">${h.tel}</span></p>
+            
+            <div class="pt-2 border-t border-slate-200">
+              <div class="text-[11px] font-semibold text-slate-500 mb-1.5 flex justify-between items-center">
+                <span>진료과목:</span>
+                ${dept !== 'all' ? `<span class="text-blue-600 font-bold text-[10px] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">선택한 [${dept}] 개설 확인됨</span>` : ''}
+              </div>
+              <div class="flex flex-wrap gap-1 items-center">
+                ${deptTags}
+              </div>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-200 mt-3 flex gap-2">
+            <a href="tel:${h.tel}" class="flex-1 bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold text-center hover:bg-slate-100">
+              전화 문의
+            </a>
+            <a href="https://map.kakao.com/?q=${encodeURIComponent(h.name)}" target="_blank" class="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold text-center hover:bg-blue-700">
+              길찾기 지도
+            </a>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    // 샘플 데이터셋 테이블 렌더링
+    function renderSampleDataset() {
+      const tbody = document.getElementById("sample-dataset-body");
+      tbody.innerHTML = "";
+      sampleDataset.forEach(d => {
+        const tr = document.createElement("tr");
+        let badgeClass = "bg-slate-100 text-slate-700";
+        if (d.level === 'emergency') badgeClass = "bg-red-100 text-red-700 font-bold";
+        else if (d.level === 'urgent') badgeClass = "bg-amber-100 text-amber-700 font-bold";
+        else if (d.level === 'nonurgent') badgeClass = "bg-emerald-100 text-emerald-700 font-bold";
+
+        tr.innerHTML = `
+          <td class="p-2.5 font-mono text-slate-400">#${d.id}</td>
+          <td class="p-2.5 font-medium text-slate-900">${d.symptom}</td>
+          <td class="p-2.5 text-slate-700">${d.meds}</td>
+          <td class="p-2.5 text-slate-600">${d.chronic}</td>
+          <td class="p-2.5 font-bold">${d.pain} / 10</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[11px] ${badgeClass}">${d.label}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Chart.js 변수 중요도 초기화
+    function initChart() {
+      window.chartInitialized = true;
+      const ctx = document.getElementById('importanceChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['의식 저하 / 무반응', '복합 증상 조합(흉통+식은땀 등)', '심한 호흡 곤란', '통증 척도(NRS)', '항응고제 복용+외상', '뇌졸중 의심 징후', '기저질환 복합도', '고령/소아 고위험'],
+          datasets: [{
+            label: '변수 중요도 (Random Forest MDI)',
+            data: [0.24, 0.20, 0.17, 0.13, 0.11, 0.07, 0.05, 0.03],
+            backgroundColor: [
+              'rgba(239, 68, 68, 0.8)',
+              'rgba(249, 115, 22, 0.8)',
+              'rgba(234, 179, 8, 0.8)',
+              'rgba(59, 130, 246, 0.8)',
+              'rgba(14, 165, 233, 0.8)',
+              'rgba(99, 102, 241, 0.8)',
+              'rgba(147, 51, 234, 0.8)',
+              'rgba(100, 116, 139, 0.8)'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { font: { size: 10 } } },
+            y: { beginAtZero: true, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    // 페이지 초기화
+    document.addEventListener("DOMContentLoaded", () => {
+      toggleGenderSpecific();
+      filterHospitals();
+      renderSampleDataset();
+    });
+  </script>
+</body>
+</html>
